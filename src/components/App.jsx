@@ -17,19 +17,19 @@ export const App = () => {
   const [total, setTotal] = useState(13);
   const [current, setCurrent] = useState(null);
 
-  const fetchImages = () => {
-    setIsLoading(true);
-    Api.fetchImages(query, page)
-      .then(res => {
-        setImages([...images, ...res.data.hits]);
-        setTotal(res.data.total);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
-
   useEffect(() => {
+    const fetchImages = () => {
+      setIsLoading(true);
+      Api.fetchImages(query, page)
+        .then(res => {
+          setImages(prevState => [...prevState, ...res.data.hits]);
+          setTotal(res.data.total);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    };
+
     if (query.length > 0) fetchImages();
   }, [page, query]);
 
