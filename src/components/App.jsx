@@ -1,87 +1,73 @@
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Modal } from './Modal/Modal';
-import { Component } from 'react';
 import { Empty } from './Empty/Empty';
 import { Loader } from './Loader/Loader';
 import { Button } from './Button/Button';
 import { Api } from 'helpers/Api';
+import { useState } from 'react';
+import { useEffect } from 'react';
+import { useMemo } from 'react';
 
-export class App extends Component {
-  state = {
-    images: [],
-    page: 1,
-    isLoading: false,
-    query: '',
-    total: 13,
-    current: null,
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [total, setTotal] = useState(13);
+  const [current, setCurrent] = useState(null);
 
-  fetchImages = () => {
-    this.setState({
-      isLoading: true,
-    });
-    Api.fetchImages(this.state.query, this.state.page)
+  const fetchImages = () => {
+    setIsLoading(true);
+    Api.fetchImages(query, page)
       .then(res => {
-        this.setState({
-          images: [...this.state.images, ...res.data.hits],
-          total: res.data.total,
-        });
+        setImages([...images, ...res.data.hits]);
+        setTotal(res.data.total);
       })
       .finally(() => {
-        this.setState({
-          isLoading: false,
-        });
+        setIsLoading(false);
       });
   };
 
-  componentDidUpdate(_, prevState) {
-    if (
-      prevState.page !== this.state.page ||
-      prevState.query !== this.state.query
-    ) {
-      this.fetchImages();
-    }
-  }
+  useEffect(() => {
+    if (query.length > 0) fetchImages();
+  }, [page, query]);
 
-  isDisabled() {
-    return this.state.page >= Math.ceil(this.state.total / 12);
-  }
-
-  onSubmit = query => {
-    this.setState({ query, page: 1, images: [] });
+  const onSubmit = query => {
+    setQuery(query);
+    setPage(1);
+    setImages([]);
   };
 
-  render() {
-    const hasImages = this.state.images.length > 0;
-    const hasLoading = this.state.isLoading && !hasImages;
+  const hasImages = useMemo(() => {
+    return images.length > 0;
+  }, [images]);
 
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.onSubmit} />
-        {hasImages ? (
-          <ImageGallery
-            onClickImage={image => this.setState({ current: image })}
-            images={this.state.images}
-          />
-        ) : (
-          <Empty />
-        )}
-        {hasLoading && <Loader />}
-        {hasImages && (
-          <Button
-            disabled={this.isDisabled()}
-            onClick={() => this.setState({ page: this.state.page + 1 })}
-          />
-        )}
+  const hasLoading = useMemo(() => {
+    return !hasImages && isLoading;
+  }, [isLoading, hasImages]);
 
-        {this.state.current && (
-          <Modal
-            onClose={() => this.setState({ current: null })}
-            image={this.state.current}
-          />
-        )}
-      </div>
-    );
-  }
-}
+  const hasButton = useMemo(() => {
+    return hasImages ? page < Math.ceil(total / 12) : false;
+  }, [page, total, hasImages]);
+
+  return (
+    <div className="App">
+      <Searchbar onSubmit={onSubmit} />
+      {hasImages ? (
+        <ImageGallery
+          onClickImage={image => setCurrent(image)}
+          images={images}
+        />
+      ) : (
+        !isLoading && <Empty />
+      )}
+      {hasLoading && <Loader />}
+      {hasButton && (
+        <Button disabled={isLoading} onClick={() => setPage(page + 1)} />
+      )}
+
+      {current && <Modal onClose={() => setCurrent(null)} image={current} />}
+    </div>
+  );
+};
